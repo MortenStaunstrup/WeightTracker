@@ -1,0 +1,92 @@
+@page "/opretbruger"
+@using Blazored.LocalStorage
+@using Core
+@using WeightTracker.Services.Interfaces
+@inject ILocalStorageService LocalStorage
+@inject IUserService UserService
+@inject NavigationManager NavMan
+
+<h3>Login</h3>
+
+<EditForm EditContext="EditContext" class="row p-3" OnSubmit="HandleSubmit">
+    <DataAnnotationsValidator></DataAnnotationsValidator>
+    <ValidationSummary></ValidationSummary>
+    
+    <div class="col-md-6 mb-3">
+        <label for="email">Email</label>
+        <InputText id="email" @bind-Value="model.Email" class="form-control"/>
+    </div>
+    <div class="col-md-6 mb-3">
+        <label for="password">Password</label>
+        <InputText id="password" @bind-Value="model.Password" class="form-control"/>
+    </div>
+    <div class="col-md-6 mb-3">
+        <label for="firstname">First Name</label>
+        <InputText id="firstname" @bind-Value="model.FirstName" class="form-control"/>
+    </div>
+    <div class="col-md-6 mb-3">
+        <label for="lastname">Last Name</label>
+        <InputText id="lastname" @bind-Value="model.LastName" class="form-control"/>
+    </div>
+    <div class="col-md-6 mb-3">
+        <label for="birth">Birth Date</label>
+        <InputDate TValue="DateOnly" id="birth" @bind-Value="model.Birthday" class="form-control"/>
+    </div>
+    <div class="col-md-6 mb-3">
+        <label for="gender">Gender</label>
+        <InputSelect TValue="char" id="gender" @bind-Value="model.Gender" class="form-control">
+            <option value=""></option>
+            @foreach (var c in genders)
+            {
+                <option value="@c">@c</option>
+            }
+        </InputSelect>
+    </div>
+    <div class="col-12 mb-3">
+        <button type="submit" class="btn btn-primary">Submit</button>
+    </div>
+</EditForm>
+
+<p>@errorMessage</p>
+
+@code {
+    User? _currentUser;
+
+    User model;
+    EditContext EditContext;
+    char[] genders = new[] { 'M', 'F' };
+    string errorMessage = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        model = new User();
+        EditContext = new EditContext(model);
+        
+        _currentUser = await LocalStorage.GetItemAsync<User>("user");
+        if(_currentUser != null)
+            NavMan.NavigateTo("/");
+    }
+
+    private async void HandleSubmit()
+    {
+        model.Id = 0;
+        if (EditContext.Validate())
+        {
+            var result = await UserService.RegisterUserAsync(model);
+            if (!result)
+            {
+                errorMessage = "Email already exists";
+            }
+            else
+            {
+                errorMessage = "Succesful";
+            }
+            StateHasChanged();
+        }
+        else
+        {
+            Console.WriteLine("Failed to validate");
+        }
+    }
+
+}

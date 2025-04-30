@@ -1,0 +1,49 @@
+@page "/login"
+@using Blazored.LocalStorage
+@using Core
+@using WeightTracker.Services.Interfaces
+@inject IUserService UserService
+@inject NavigationManager NavMan
+@inject ILocalStorageService LocalStorage
+
+<h3>LoginPage</h3>
+
+<label for="email">Email</label>
+<InputText id="email" placeholder="email..." @bind-Value="@email"></InputText>
+<label for="password">Password</label>
+<InputText id="password" type="password" placeholder="password..." @bind-Value="@password"></InputText>
+<button @onclick="Login">Login</button>
+
+<p style="color: red">@errorMessage</p>
+
+@code {
+    
+    User? currentUser;
+    string email = "";
+    string password = "";
+    string errorMessage = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        currentUser = await UserService.GetUserLoggedInAsync();
+        if (currentUser != null)
+        {
+            NavMan.NavigateTo("/");
+        }
+    }
+
+    private async void Login()
+    {
+        var user = await UserService.LoginAsync(email, password);
+        if (user != null)
+        {
+            await LocalStorage.SetItemAsync("user", user);
+            NavMan.NavigateTo("/");
+        }
+        else
+        {
+            errorMessage = "Wrong email or password";
+        }
+    }
+
+}
