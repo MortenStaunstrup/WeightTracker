@@ -1,0 +1,12 @@
+@page "/logout"
+@using Blazored.LocalStorage
+@inject ILocalStorageService LocalStorage
+@inject NavigationManager NavMan
+
+@code {
+    protected override async Task OnInitializedAsync()
+    { 
+        await LocalStorage.RemoveItemAsync("user");
+        NavMan.NavigateTo("login");
+    }
+}

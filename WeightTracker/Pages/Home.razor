@@ -1,8 +1,10 @@
 ﻿@page "/"
-@using Blazored.LocalStorage
 @using Core
-@inject ILocalStorageService LocalStorage
+@using WeightTracker.Services.Interfaces
+@using WeightTracker.Components
 @inject NavigationManager NavMan
+@inject IUserService UserService
+@inject IWeightService WeightService
 
 <PageTitle>Home</PageTitle>
 
@@ -12,10 +14,40 @@
 }
 else
 {
-    <h1>Welcome back @_currentUser.FirstName @_currentUser.LastName!</h1>
-
-    <label for="val">Insert weight for today</label>
-    <InputNumber id="val" TValue="double" @bind-Value="@_weightVal"></InputNumber>
+    @if (_latestTrackedWeight.WeightKg != 0)
+    {
+        <h1>Welcome back @_currentUser.FirstName @_currentUser.LastName!</h1>
+        <p>Latest tracked weight was: @(isKg ? _latestTrackedWeight.WeightKg + " Kg" : _latestTrackedWeight.WeightLbs + "Lbs") on @_latestTrackedDate</p>
+    }
+    else
+    {
+        <h1>Hello and Welcome @_currentUser.FirstName @_currentUser.LastName!</h1>
+        <p>And welcome to your new weight loss/gain journey</p>
+    }
+    
+    @if (!_weightTracked)
+    {
+        <label for="val">Insert weight for today (@(isKg ? "kg" : "lbs"))</label>
+        <InputNumber id="val" TValue="double" @bind-Value="@_weightVal"></InputNumber>
+        <button @onclick="ChangeMeasurements">Kg/Lbs</button>
+        <button @onclick="SubmitWeight">Submit Weight</button>
+        <p style="color: red">@_errorMessage</p>
+    }
+    else
+    {
+        <p>You've already tracked your weight for today!</p>
+        <span>I typed it wrong! Redo:</span>
+        <button @onclick="RedoTodaysWeight">Redo</button>
+    }
+    
+    <ModalDialog @ref="_modal" Title="Redo Daily Weight">
+        <p>Typed in weight: @_latestTrackedWeight.WeightKg/@_latestTrackedWeight.WeightLbs</p>
+        <label for="newval">Redo weight (@(isKg ? "kg" : "lbs"))</label>
+        <InputNumber id="newval" @bind-Value="_weightVal"></InputNumber>
+        <button @onclick="ChangeMeasurements">Kg/Lbs</button>
+        <button @onclick="SubmitWeight">Submit changes</button>
+        
+    </ModalDialog>
 }
 
 
@@ -23,12 +55,100 @@ else
 
     User? _currentUser;
     double _weightVal;
+    DateOnly _today = DateOnly.FromDateTime(DateTime.Now);
+    DateOnly? _latestTrackedDate;
+    Weight? _latestTrackedWeight;
+    bool _weightTracked = false;
+    bool isKg = true;
+    bool _redoDailyWeight = false;
+    string _errorMessage = "";
+
+    ModalDialog? _modal;
 
     protected override async Task OnInitializedAsync()
     {
-        _currentUser = await LocalStorage.GetItemAsync<User>("user");
+        _currentUser = await UserService.GetUserLoggedInAsync();
         if(_currentUser == null)
             NavMan.NavigateTo("login");
+        else
+        {
+            _latestTrackedWeight = await WeightService.GetLatestTrackedWeightByUserIdAsync(_currentUser.Id);
+            if (_latestTrackedWeight.WeightKg != 0)
+            {
+                _latestTrackedDate = _latestTrackedWeight.Date;
+                if (_latestTrackedDate == _today)
+                {
+                    _weightTracked = true;
+                    StateHasChanged();
+                }
+            }
+        }
+    }
+
+    private void SubmitWeight()
+    {
+        if (_weightVal <= 0)
+        {
+            _errorMessage = "Weight cannot be negative or zero";
+        }
+        else
+        {
+            if (isKg)
+            {
+                    var w = new Weight()
+                    {
+                        UserId = _currentUser.Id,
+                        Date = _today,
+                        WeightKg = _weightVal,
+                        WeightLbs = Math.Round(_weightVal * 2.20462)
+                    };
+                    if (!_redoDailyWeight)
+                    {
+                        WeightService.AddDailyWeightAsync(w);
+                        Console.WriteLine($"Adding daily weight {w.WeightKg}");
+                    }
+                    else
+                    {
+                        WeightService.UpdateWeight(w);
+                        _redoDailyWeight = false;
+                    }
+                    NavMan.NavigateTo(NavMan.Uri, true);
+            }
+            else
+            {
+                var w = new Weight()
+                {
+                    UserId = _currentUser.Id,
+                    Date = _today,
+                    WeightLbs = _weightVal,
+                    WeightKg = Math.Round(_weightVal / 2.20462)
+                };
+                if (!_redoDailyWeight)
+                {
+                    WeightService.AddDailyWeightAsync(w);
+                    Console.WriteLine($"Adding daily weight {w.WeightKg}");
+                }
+                else
+                {
+                    WeightService.UpdateWeight(w);
+                    _redoDailyWeight = false;
+                }
+                NavMan.NavigateTo(NavMan.Uri, true);
+                
+            }
+        }
+    }
+
+    private void RedoTodaysWeight()
+    {
+        _redoDailyWeight = true;
+        _modal.Open();
+    }
+
+    private void ChangeMeasurements()
+    {
+        isKg = !isKg;
+        StateHasChanged();
     }
 
 }

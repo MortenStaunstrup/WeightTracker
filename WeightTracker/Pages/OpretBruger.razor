@@ -18,7 +18,11 @@
     </div>
     <div class="col-md-6 mb-3">
         <label for="password">Password</label>
-        <InputText id="password" @bind-Value="model.Password" class="form-control"/>
+        <InputText id="password" @bind-Value="model.Password" class="form-control" type="password"/>
+    </div>
+    <div class="col-md-6 mb-3">
+        <label for="confirmpassword">Confirm Password</label>
+        <InputText id="confirmpassword" @bind-Value="model.ConfirmPassword" class="form-control" type="password"/>
     </div>
     <div class="col-md-6 mb-3">
         <label for="firstname">First Name</label>
@@ -35,7 +39,6 @@
     <div class="col-md-6 mb-3">
         <label for="gender">Gender</label>
         <InputSelect TValue="char" id="gender" @bind-Value="model.Gender" class="form-control">
-            <option value=""></option>
             @foreach (var c in genders)
             {
                 <option value="@c">@c</option>
@@ -47,7 +50,7 @@
     </div>
 </EditForm>
 
-<p>@errorMessage</p>
+<p style="color: red;">@errorMessage</p>
 
 @code {
     User? _currentUser;
@@ -79,7 +82,7 @@
             }
             else
             {
-                errorMessage = "Succesful";
+                NavMan.NavigateTo("login");
             }
             StateHasChanged();
         }
